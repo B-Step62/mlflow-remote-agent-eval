@@ -4,16 +4,20 @@ A real calculator agent hosted on Databricks Apps. One evaluation script calls
 the agent, propagates W3C trace context, and runs three LLM judges against five
 examples. Client and agent spans form one trace stored in Unity Catalog.
 
-```text
-app.py             FastAPI + LangGraph agent + Databricks LLM + calculator tool
-eval.py            Dataset, HTTP predict function, and three LLM judges
-requirements.txt   Shared pinned Python dependencies
-app.yaml           App startup and resource-backed environment variables
-databricks.yml     App deployment and resource permissions
-.gitignore         Excludes credentials and local artifacts
-README.md          This guide
-docs/images/       Evaluation results and trace screenshots
-```
+## How context propagation works
+
+The traced `predict_fn` sends headers from
+`mlflow.tracing.get_tracing_context_headers_for_http_request()`. The App restores
+them with `set_tracing_context_from_http_request_headers()` before starting
+`remote-handler` and invoking the autologged graph.
+
+Databricks Apps can rewrite `traceparent` to reference an intermediate proxy span
+that is absent from the UC trace. The client also sends the original W3C value in
+`X-MLflow-Traceparent`; the handler restores that value before extracting context.
+
+The App returns the answer directly. MLflow handles trace export and retrieval.
+Trace-aware judges use the spans available when MLflow reads the trace. There is
+no conversation memory, streaming, or external tool service.
 
 The trace looks like this:
 
@@ -24,6 +28,33 @@ predict                       local evaluator
         ├── LLM               Databricks model call
         ├── calculate         arithmetic tool
         └── LLM               final answer
+```
+
+## Screenshots
+
+These show the real workspace results in the open-source MLflow UI connected
+to the E2 backend. Workspace and user details are omitted.
+
+The evaluation run shows the five examples and LLM judge assessments.
+
+![Evaluation results and LLM judge scores](docs/images/evaluation.png)
+
+A trace connects the local prediction with the remote LangGraph agent, including
+its LLM calls and calculator tool.
+
+![Distributed trace with the remote agent and calculator tool](docs/images/trace.png)
+
+## Repository layout
+
+```text
+app.py             FastAPI + LangGraph agent + Databricks LLM + calculator tool
+eval.py            Dataset, HTTP predict function, and three LLM judges
+requirements.txt   Shared pinned Python dependencies
+app.yaml           App startup and resource-backed environment variables
+databricks.yml     App deployment and resource permissions
+.gitignore         Excludes credentials and local artifacts
+README.md          This guide
+docs/images/       Evaluation results and trace screenshots
 ```
 
 ## Local setup
@@ -142,35 +173,6 @@ export MLFLOW_GENAI_JUDGE_DEFAULT_MODEL=databricks:/databricks-claude-haiku-4-5
 
 Agent and judge calls incur normal model serving costs. Metrics and judge
 rationales are recorded in the MLflow evaluation run.
-
-## Screenshots
-
-These show the real workspace results in the open-source MLflow UI connected
-to the E2 backend. Workspace and user details are omitted.
-
-The evaluation run shows the five examples and LLM judge assessments.
-
-![Evaluation results and LLM judge scores](docs/images/evaluation.png)
-
-A trace connects the local prediction with the remote LangGraph agent, including
-its LLM calls and calculator tool.
-
-![Distributed trace with the remote agent and calculator tool](docs/images/trace.png)
-
-## How context propagation works
-
-The traced `predict_fn` sends headers from
-`mlflow.tracing.get_tracing_context_headers_for_http_request()`. The App restores
-them with `set_tracing_context_from_http_request_headers()` before starting
-`remote-handler` and invoking the autologged graph.
-
-Databricks Apps can rewrite `traceparent` to reference an intermediate proxy span
-that is absent from the UC trace. The client also sends the original W3C value in
-`X-MLflow-Traceparent`; the handler restores that value before extracting context.
-
-The App returns the answer directly. MLflow handles trace export and retrieval.
-Trace-aware judges use the spans available when MLflow reads the trace. There is
-no conversation memory, streaming, or external tool service.
 
 ## Secrets and cleanup
 
