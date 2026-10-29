@@ -1,36 +1,35 @@
-# Remote LangGraph evaluation with MLflow
+# Evaluate remote agents with MLflow
 
-A real calculator agent hosted on Databricks Apps. One evaluation script calls
-the agent, propagates W3C trace context, and runs three LLM judges against five
-examples. Client and agent spans form one trace stored in Unity Catalog.
+This repo shows how to run MLflow evaluation against an agent behind a remote
+endpoint. It uses [distributed tracing](https://mlflow.org/docs/latest/genai/tracing/app-instrumentation/distributed-tracing/)
+to give evaluation one trace containing both the client prediction and the
+remote agent's execution.
 
-## How context propagation works
+The example includes five evaluation tasks, three LLM judges, and a tool-calling
+LangGraph agent. Traces are stored in Unity Catalog.
+
+## How evaluation with a remote agent works
+
+MLflow evaluates each dataset example by calling `predict_fn`. In this example,
+each prediction creates a trace for that task. Some scorers judge the answer;
+trace-aware scorers such as `ToolCallCorrectness` also need the agent's tool spans
+to evaluate how it solved the task.
+
+A remote agent runs in another process, so its spans do not automatically become
+part of the client's evaluation trace. An HTTP call can return the correct answer
+while leaving the agent's execution in a separate trace. Distributed tracing
+connects the two:
 
 ![Architecture showing trace context passed from evaluation to the remote agent and their combined trace in MLflow](docs/images/architecture.png)
 
-The traced `predict_fn` sends headers from
-`mlflow.tracing.get_tracing_context_headers_for_http_request()`. The App restores
-them with `set_tracing_context_from_http_request_headers()` before starting
-`remote-handler` and invoking the autologged graph.
-
-Databricks Apps can rewrite `traceparent` to reference an intermediate proxy span
-that is absent from the UC trace. The client also sends the original W3C value in
-`X-MLflow-Traceparent`; the handler restores that value before extracting context.
-
-The App returns the answer directly. MLflow handles trace export and retrieval.
-Trace-aware judges use the spans available when MLflow reads the trace. There is
-no conversation memory, streaming, or external tool service.
-
-The trace looks like this:
-
-```text
-predict                       local evaluator
-└── remote-handler            Databricks App
-    └── LangGraph
-        ├── LLM               Databricks model call
-        ├── calculate         arithmetic tool
-        └── LLM               final answer
-```
+1. The client creates a root span for each prediction. `predict_fn` passes its
+   trace ID and span ID to the remote endpoint in a W3C `traceparent` header.
+2. The agent service restores that context before invoking the agent. MLflow
+   autologging creates agent, LLM, and tool spans under the same trace ID, as
+   descendants of the client's prediction span.
+3. Both processes export to the same UC-backed experiment. MLflow retrieves the
+   unified trace for each task and makes it available to evaluation's trace-aware
+   scorers.
 
 ## Screenshots
 
