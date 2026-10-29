@@ -1,0 +1,10 @@
+mlflow[databricks]==3.17.2
+databricks-langchain==0.21.0
+databricks-sdk==0.156.0
+langchain==1.4.7
+langgraph==1.2.16
+fastapi==0.161.0
+uvicorn==0.54.0
+requests==2.34.2
+# The LangChain MCP adapter imported by databricks-langchain requires MCP 1.x.
+mcp==1.30.0

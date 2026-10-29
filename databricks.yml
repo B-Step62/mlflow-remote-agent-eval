@@ -1,0 +1,72 @@
+bundle:
+  name: mlflow-remote-agent-eval
+
+variables:
+  app_name:
+    default: mlflow-remote-agent-eval
+  experiment_id:
+    description: ID of an experiment already bound to UC trace storage
+  trace_prefix:
+    description: UC catalog.schema.table_prefix used by that experiment
+  warehouse_id:
+    description: SQL warehouse ID for trace retrieval
+  llm_endpoint:
+    default: databricks-claude-haiku-4-5
+
+sync:
+  include: [/app.py, /app.yaml, /requirements.txt]
+  exclude:
+    [
+      /.venv/**,
+      /.databricks/**,
+      /__pycache__/**,
+      /docs/**,
+      /eval.py,
+      /README.md,
+      /databricks.yml,
+      /.gitignore,
+    ]
+
+resources:
+  apps:
+    agent:
+      name: ${var.app_name}
+      description: LangGraph calculator with distributed MLflow tracing and evaluation
+      source_code_path: .
+      resources:
+        - name: experiment
+          experiment:
+            experiment_id: ${var.experiment_id}
+            permission: CAN_EDIT
+        - name: llm
+          serving_endpoint:
+            name: ${var.llm_endpoint}
+            permission: CAN_QUERY
+        - name: warehouse
+          sql_warehouse:
+            id: ${var.warehouse_id}
+            permission: CAN_USE
+        - name: trace-spans
+          uc_securable:
+            securable_full_name: ${var.trace_prefix}_otel_spans
+            securable_type: TABLE
+            permission: MODIFY
+        - name: trace-logs
+          uc_securable:
+            securable_full_name: ${var.trace_prefix}_otel_logs
+            securable_type: TABLE
+            permission: MODIFY
+        - name: trace-metrics
+          uc_securable:
+            securable_full_name: ${var.trace_prefix}_otel_metrics
+            securable_type: TABLE
+            permission: MODIFY
+        - name: trace-annotations
+          uc_securable:
+            securable_full_name: ${var.trace_prefix}_otel_annotations
+            securable_type: TABLE
+            permission: MODIFY
+
+targets:
+  e2:
+    default: true

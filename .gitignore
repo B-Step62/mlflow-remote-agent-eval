@@ -1,0 +1,16 @@
+# Only source files and the two README screenshots belong in this repository.
+# Credentials, local configuration, deployment state, environments, and results stay local.
+/*
+!/.gitignore
+!/README.md
+!/app.py
+!/eval.py
+!/requirements.txt
+!/app.yaml
+!/databricks.yml
+!/docs/
+/docs/*
+!/docs/images/
+/docs/images/*
+!/docs/images/evaluation.png
+!/docs/images/trace.png
