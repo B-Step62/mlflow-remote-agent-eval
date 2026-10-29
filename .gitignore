@@ -1,4 +1,4 @@
-# Only source files and the two README screenshots belong in this repository.
+# Only source files and README images belong in this repository.
 # Credentials, local configuration, deployment state, environments, and results stay local.
 /*
 !/.gitignore
@@ -12,5 +12,6 @@
 /docs/*
 !/docs/images/
 /docs/images/*
+!/docs/images/architecture.png
 !/docs/images/evaluation.png
 !/docs/images/trace.png

@@ -6,6 +6,8 @@ examples. Client and agent spans form one trace stored in Unity Catalog.
 
 ## How context propagation works
 
+![Architecture showing trace context passed from evaluation to the remote agent and their combined trace in MLflow](docs/images/architecture.png)
+
 The traced `predict_fn` sends headers from
 `mlflow.tracing.get_tracing_context_headers_for_http_request()`. The App restores
 them with `set_tracing_context_from_http_request_headers()` before starting
@@ -54,7 +56,7 @@ app.yaml           App startup and resource-backed environment variables
 databricks.yml     App deployment and resource permissions
 .gitignore         Excludes credentials and local artifacts
 README.md          This guide
-docs/images/       Evaluation results and trace screenshots
+docs/images/       Architecture diagram and UI screenshots
 ```
 
 ## Local setup
@@ -176,7 +178,7 @@ rationales are recorded in the MLflow evaluation run.
 
 ## Secrets and cleanup
 
-`.gitignore` allows the source files and screenshots above. OAuth profiles,
+`.gitignore` allows the source files and README images. OAuth profiles,
 `.env` files, `.venv`, `.databricks`, logs, and evaluation artifacts are ignored.
 Do not force-add credentials. The bundle only synchronizes App source and its
 configuration/dependencies.
